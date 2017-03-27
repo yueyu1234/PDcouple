@@ -1,0 +1,149 @@
+# Coupling FE/PD
+
+## MATERIAL
+variable	myDensity equal 0.98				# Density of the Material
+variable	myE equal 1.0						# Elastic modulus
+variable	myP equal (1.0/4.0)					# Poisson's ratio
+variable	myK equal ${myE}/(3*(1-2*${myP}))	# Bulk modulus
+variable	pi equal 3.14159265358979323846		# constant, but define it as a variable here
+
+## MESH (GRID)
+variable	npts	equal 11
+variable	h equal (1/${npts})		# Mesh spacing
+variable	delta equal 3.00000001*${h}	# Peridynamic horizon
+
+## LAMMPS 
+dimension	2d
+units		si
+boundary		s s p
+atom_style	peri
+atom_modify	map array
+variable		myskin equal 2.0*${h}
+neighbor		${myskin} bin
+lattice		sq ${h}
+
+## GEOMETRY
+variable	X1 equal 0.5
+variable	X2 equal 0.5
+variable	X3 equal 0.1*${h}
+variable	myxmin equal -0.5000000-${h}
+variable	myxmax equal  0.5000000
+variable	myymin equal -0.5000000-${h}
+variable	myymax equal  0.5000000
+variable	myzmin equal 0.0
+variable	myzmax equal  ${X3}
+
+region	Plate block &
+		${myxmin} ${myxmax} ${myymin} ${myymax} ${myzmin} ${myzmax} &
+		units box
+create_box	4 Plate
+
+## ATOMS
+create_atoms	1 region Plate
+
+## PERIDYNAMICS
+pair_style	peri/pmb
+variable	mydelta equal (${delta}+(${delta}/1000.0))
+
+## REGIONS
+variable	tmpvar1x equal ${myxmax}-${h}	# for load
+variable	tmpvar2x equal ${myxmin}+0.99*${h}	# for bcx
+variable	hf equal (1.0/21.0)				# FE grid spacing
+variable	tmpvar11x equal ${myxmax}-${h}-${hf}	# for load
+variable	tmpvar22x equal ${myxmin}+${h}+0.99*${hf}	# for bcx
+
+region	RgRightout  block &
+		${tmpvar1x} ${myxmax} -INF INF -INF INF &
+		units box
+region	RgLeftout block &
+		${myxmin} ${tmpvar2x} -INF INF -INF INF &
+		units box
+region	RgUpperout block &
+		-INF INF ${tmpvar1x}  ${myymax} -INF INF &
+		units box
+region	RgLowerout block &
+		-INF INF ${myymin} ${tmpvar2x} -INF INF &
+		units box
+region	RgOut union 4 RgRightout RgLeftout RgUpperout RgLowerout
+
+variable	tmpvarmhf equal ${myxmax}-${hf}
+variable	tmpvarphf equal ${myxmin}+${hf}
+
+region	RgRightin  block &
+		${tmpvar11x} ${tmpvarmhf} ${tmpvarphf} ${tmpvarmhf} -INF INF &
+		units box
+region	RgLeftin block &
+		${tmpvarphf} ${tmpvar22x}  ${tmpvarphf} ${tmpvarmhf} -INF INF &
+		units box
+region	RgUpperin block &
+		${tmpvarphf} ${tmpvarmhf} ${tmpvar11x}  ${tmpvarmhf} -INF INF &
+		units box
+region	RgLowerin block &
+		${tmpvarphf} ${tmpvarmhf} ${tmpvarphf} ${tmpvar22x} -INF INF &
+		units box
+region	RgIn union 4 RgRightin RgLeftin RgUpperin RgLowerin
+
+
+region	RgRightover  block &
+		${tmpvar11x} ${myxmax} -INF INF -INF INF &
+		units box
+region	RgLeftover block &
+		${myxmin} ${tmpvar22x} -INF INF -INF INF &
+		units box
+region	RgUpperover block &
+		-INF INF ${tmpvar11x}   ${myymax} -INF INF &
+		units box
+region	RgLowerover block &
+		-INF INF ${myymin} ${tmpvar22x} -INF INF &
+		units box
+region	RgOver union 4 RgRightover RgLeftover RgUpperover RgLowerover
+
+set	region RgOver	type 2
+set	region RgOut	type 3
+set	region RgIn	type 4
+
+variable		myc equal ((18.0*${myK})/(${pi}*(${delta}^4)))
+pair_coeff		* * ${myc} ${mydelta} 100000 0.0
+
+## GROUPS
+group	GrPlate region Plate
+group	GrOut region RgOut
+group	GrIn region RgIn
+group	GrOver region RgOver
+
+displace_atoms all move 0.5 0.5 0.0
+
+dump	DpGrOut GrOut custom 1000 dump_t1_GroupOut id
+dump	DpGrIn GrIn custom 1000 dump_t1_GroupIn id
+dump	DpGrOver GrOver custom 1000 dump_t1_GroupOver id
+
+## SETS
+set		group all density ${myDensity}
+variable	myVolume equal ($h)^2
+set		group all volume ${myVolume}
+
+## TIME INTEGRATION
+fix             Fnve all nve
+
+## BOUNDARY CONDICTIONS
+variable	myLD equal ((${myymax}*${myzmax}*0.03)/(${myzmax}*($h)^2))
+
+variable	myvisc index 0.0
+#variable	myvisc index 30.0
+fix		V1 GrPlate viscous ${myvisc}
+
+compute         C1 all damage/atom
+
+## TIME STEP
+variable		mystep equal &
+			0.8*sqrt((2.0*${myDensity})/(512*(${myc}/$h)*${myVolume}))
+timestep		${mystep}
+#variable		mystep index 1.0
+#variable		mystep index 2.0e-6
+timestep		${mystep}
+
+## RESULTS
+thermo	10
+dump	1 all custom 10 dump_t1 id type x y z vx vy c_C1
+## unsing nve
+run		10

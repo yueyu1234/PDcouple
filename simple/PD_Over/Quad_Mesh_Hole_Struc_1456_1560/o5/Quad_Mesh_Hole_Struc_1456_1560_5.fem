@@ -1,0 +1,143 @@
+# Coupling FE/PD
+
+## MATERIAL
+variable	myDensity equal 0.98				# Density of the Material
+variable	myE equal 10.0						# Elastic modulus
+variable	myP equal (1.0/3.0)					# Poisson's ratio
+variable	myK equal ${myE}/(3*(1-2*${myP}))	# Bulk modulus
+variable	pi equal 3.14159265358979323846		# constant, but define it as a variable here
+
+## MESH (GRID)
+variable	fenpts	equal 20			 # FE Num of points in each direction
+variable	hf equal (1.0/${fenpts})	 # FE grid spacing
+variable	delta equal 2.001*${hf}		 # Peridynamic horizon
+variable	npts equal 20			# PD Num of points in each direction
+variable	h equal (1.0/${npts})	# FE grid spacing
+
+## LAMMPS 
+dimension	2d
+units		si
+boundary	s s p
+atom_style	peri
+atom_modify	map array
+variable	myskin equal 2.0*${h}
+neighbor	${myskin} bin
+lattice		sq ${h}
+
+## GEOMETRY
+variable	X1 equal 11.00001*${hf}
+variable	X2 equal 11.00001*${hf}
+variable	X3 equal 0.1*${h}
+variable	myxmin equal -${X1}
+variable	myxmax equal  ${X1}
+variable	myymin equal -${X2}
+variable	myymax equal  ${X2}
+variable	myzmin equal  0.0
+variable	myzmax equal  ${X3}
+
+region		Plate block &
+			${myxmin} ${myxmax} ${myymin} ${myymax} ${myzmin} ${myzmax} &
+			units box
+create_box	4 Plate
+
+## ATOMS
+create_atoms	1 region Plate
+
+## PERIDYNAMICS
+pair_style	peri/pmb_dr
+variable	mydelta equal (${delta}+(${delta}/1000.0))
+
+## REGIONS
+variable	tm1x equal ${myxmax}-1.5*${hf}
+variable	tm2x equal ${myxmin}+1.5*${hf}
+
+# Outside Boundary
+region	RgRightout  block &
+		${tm1x} ${myxmax} -INF INF -INF INF &
+		units box
+region	RgLeftout block &
+		${myxmin} ${tm2x} -INF INF -INF INF &
+		units box
+region	RgUpperout block &
+		-INF INF ${tm1x}  ${myymax} -INF INF &
+		units box
+region	RgLowerout block &
+		-INF INF ${myymin} ${tm2x} -INF INF &
+		units box
+region	RgOut union 4 RgRightout RgLeftout RgUpperout RgLowerout
+
+variable	tmpvar1x  equal ${myxmax}-5.0001*${hf}
+variable	tmpvar2x  equal ${myxmin}+5.0001*${hf}
+variable	tmpvarmhf equal ${myxmax}-4.8999*${hf}
+variable	tmpvarphf equal ${myxmin}+4.8999*${hf}
+
+# Internal Boundary
+region	RgRightin  block &
+		${tmpvar1x} ${tmpvarmhf} ${tmpvarphf} ${tmpvarmhf} -INF INF &
+		units box
+region	RgLeftin block &
+		${tmpvarphf} ${tmpvar2x}  ${tmpvarphf} ${tmpvarmhf} -INF INF &
+		units box
+region	RgUpperin block &
+		${tmpvarphf} ${tmpvarmhf} ${tmpvar1x}  ${tmpvarmhf} -INF INF &
+		units box
+region	RgLowerin block &
+		${tmpvarphf} ${tmpvarmhf} ${tmpvarphf} ${tmpvar2x} -INF INF &
+		units box
+region	RgIn union 4 RgRightin RgLeftin RgUpperin RgLowerin
+
+# Whole Overlapping
+region	RgRightover  block &
+		${tmpvar1x} ${myxmax} -INF INF -INF INF &
+		units box
+region	RgLeftover block &
+		${myxmin} ${tmpvar2x} -INF INF -INF INF &
+		units box
+region	RgUpperover block &
+		-INF INF ${tmpvar1x}   ${myymax} -INF INF &
+		units box
+region	RgLowerover block &
+		-INF INF ${myymin} ${tmpvar2x} -INF INF &
+		units box
+region	RgOver union 4 RgRightover RgLeftover RgUpperover RgLowerover
+
+set	region RgOver	type 2
+set	region RgOut	type 3
+set	region RgIn		type 4
+
+# Peridynamics
+variable		myc equal ((18.0*${myK})/(${pi}*(${delta}^4)))
+pair_coeff		* * ${myc} ${mydelta} 1000 0.0
+
+## GROUPS
+group	GrPlate region Plate
+group	GrOut	region RgOut
+group	GrIn	region RgIn
+group	GrOver	region RgOver
+group	GrBulk	subtract GrPlate GrOut
+
+## Dump Overlapping
+dump	DpGrOut		GrOut	custom 10000 dump_t1_GroupOut	id
+dump	DpGrIn		GrIn	custom 10000 dump_t1_GroupIn	id
+dump	DpGrOver	GrOver	custom 10000 dump_t1_GroupOver	id
+
+## SETS
+set			group all density ${myDensity}
+variable	myVolume equal ($h)^2
+set			group all volume ${myVolume}
+
+## TIME INTEGRATION
+fix		Fnve GrBulk nve_dr
+
+## BOUNDARY CONDICTIONS
+variable	myLD equal ((${myymax}*${myzmax}*0.03)/(${myzmax}*($h)^2))
+
+## TIME STEP
+variable		mystep index 1.0
+timestep		${mystep}
+
+## RESULTS
+thermo	1
+dump	1 all custom 1 dump_t1 id type x y z
+## unsing nve
+run		1
