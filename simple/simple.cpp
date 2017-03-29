@@ -37,7 +37,6 @@ See README for compilation instructions
 using namespace std;
 using namespace LAMMPS_NS;
 
-
 // -------------------------------------------------------------
 // Define functions */
 // -------------------------------------------------------------
@@ -123,17 +122,18 @@ int main(int narg, char **arg)
   double mu  = 10;
   double nu  = 0.33333333333333333333333;
   // Load
-  double load = 0.2e0;
+  double load = 0.2e0/1.;
 
   // double mu   = 72e9;
   //  double nu   = 0.33333333333333333333333;
   //  double load = 2.0e6; // no damage
   //double load = 10.0e6;
 
-  double analA = load/41./0.05/mu*(1.-nu)*(1.+nu);
-  double analB = -nu*analA/(1.-nu);
+//  double analA = load/0.05/mu*(1.-nu)*(1.+nu);
+//  double analB = -nu*analA/(1.-nu);
 
-  int flag = 3; // uses 1 dirichet; 2 for neumann; 3 robin
+  int flag = 2; // uses 1 dirichet; 2 for neumann; 3 robin
+  int thetaflag = 1; //uses 0 without aitkenl 1 for aitken
 
   FILE *File;
 
@@ -148,7 +148,7 @@ int main(int narg, char **arg)
   errorfile.open ("errorconv.txt");
 
   FE_Engine feEngine(File);
-  feEngine.FEsetup1(mu, nu, ndof, ncoord, load);
+  feEngine.FEsetup(mu, nu, ndof, ncoord, load);
 
   fclose (File);
   cout << "FE was set" << endl;
@@ -233,6 +233,11 @@ int main(int narg, char **arg)
   double ElemEdge = abs( Coords(0, 1) - Coords(0, 0) );
   double rcoeff = 20.; //Robin
 
+  double analA = load/ElemEdge/mu*(1.-nu)*(1.+nu);
+  double analB = -nu*analA/(1.-nu);
+
+  fprintf(stdout, "ElemEdge=%lf\n analA=%lf, analB=%lf\n", ElemEdge, analA, analB);
+
   double *xdisp    = new double[3*natoms];
   double *xdisp1   = new double[3*natoms];
   double *xdispold = new double[3*natoms];
@@ -254,6 +259,7 @@ int main(int narg, char **arg)
   int ntstp         = 10000;
   double theta      = 0.0;
   double thetapd    = 0.0;
+  if(thetaflag) thetapd=0.5;
   double thetapdall = 0.0;  
 
   // -------------------------------------------------------------
@@ -551,9 +557,10 @@ int main(int narg, char **arg)
     thetapd += (thetapd-1.)*QkinPD/(QksqPD+1.e-10);
 
     if (thetapd<-1.) thetapd=-1.;
-    if (thetapd>0.9) thetapd=0.9;
+    if (thetapd>0.95) thetapd=0.95;
 
-//    thetapd = 0.0; // dirichlet-dirichlet
+    if(!thetaflag)
+      thetapd = 0.0; // dirichlet-dirichlet
 
     for(int i = 0; i < 3*natoms; ++i) {
       x[i]        = x0[i] + thetapd*xdisp1[i] + (1-thetapd)*xdisp[i];
@@ -606,7 +613,7 @@ int main(int narg, char **arg)
     analerror = 0.0;
     for (int i=0;(2*i) < fesol.size();i++)
     {
-      analerror += (fesol(2*i)-analA*Coords(0, i))*(fesol(2*i)-analA*Coords(0, i)) + (fesol(2*i+1)-analB*Coords(1, i))*(fesol(2*i+1)-analB*Coords(1, i));
+      analerror += (fesol(2*i)-analA*(Coords(0, i)+1.))*(fesol(2*i)-analA*(Coords(0, i)+1.)) + (fesol(2*i+1)-analB*(Coords(1, i)+1.))*(fesol(2*i+1)-analB*(Coords(1, i)+1.));
     }
 
 

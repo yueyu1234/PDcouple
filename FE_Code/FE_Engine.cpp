@@ -410,7 +410,8 @@ void FE_Engine::FEsetup(double mu,
 	// -------------------------------------------------------------
 	rhs_values.reset(2 * rhsnodes.size());
 	int irhs = 0;
-	double dfsload = load/rhsnodes.size();
+	double dfsload = load;// /rhsnodes.size();
+        fprintf(stdout, "rhsnodes.size()=%d\n",rhsnodes.size());
 	for(int i = 0; i < rhsnodes.size(); ++i) {
 		rhs_values(irhs++) = dfsload;
 		rhs_values(irhs++) = 0.0;
