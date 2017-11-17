@@ -132,7 +132,7 @@ int main(int narg, char **arg)
 //  double analA = load/0.05/mu*(1.-nu)*(1.+nu);
 //  double analB = -nu*analA/(1.-nu);
 
-  int flag = 2; // uses 1 dirichet; 2 for neumann; 3 robin
+  int flag = 3; // uses 1 dirichet; 2 for neumann; 3 robin
   int thetaflag = 1; //uses 0 without aitkenl 1 for aitken
 
   FILE *File;
