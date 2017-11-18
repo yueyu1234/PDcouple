@@ -37,6 +37,10 @@ See README for compilation instructions
 using namespace std;
 using namespace LAMMPS_NS;
 
+#ifndef BCVALUE
+#define BCVALUE 0.66
+#endif
+
 // -------------------------------------------------------------
 // Define functions */
 // -------------------------------------------------------------
@@ -122,7 +126,7 @@ int main(int narg, char **arg)
   double mu  = 10;
   double nu  = 0.33333333333333333333333;
   // Load
-  double load = 0.2e0/1.;
+  double load = 0.2e0/5.;
 
   // double mu   = 72e9;
   //  double nu   = 0.33333333333333333333333;
@@ -231,7 +235,7 @@ int main(int narg, char **arg)
   Coords =  feEngine.feMesh->nodal_coordinates();
 
   double ElemEdge = abs( Coords(0, 1) - Coords(0, 0) );
-  double rcoeff = 20.; //Robin
+  double rcoeff = 2.; //Robin
 
   double analA = load/ElemEdge/mu*(1.-nu)*(1.+nu);
   double analB = -nu*analA/(1.-nu);
@@ -267,7 +271,7 @@ int main(int narg, char **arg)
   // -------------------------------------------------------------
   int mytsp = 0;
   int tstp = 0;
-  double CoupleTol = 1e-12;
+  double CoupleTol = 1e-15;
   double diffx     = 100.0;
   double diffx0    = 100.0;
   double diffFE    = 100.0;
@@ -307,19 +311,19 @@ int main(int narg, char **arg)
         Neighbor(2, NodeID) = NodeID-1;
       }
       // EDGE 1 y = 0.6
-      if ( (Coords(1, NodeID)) > 0.56 ){ 
+      if ( (Coords(1, NodeID)) > BCVALUE ){ 
         Normal(0, NodeID) = 0.0; Normal(1, NodeID) = -1.0;
       }
       // EDGE 2 x = 0.6
-      else if  ( (Coords(0, NodeID)) > 0.56 ) {
+      else if  ( (Coords(0, NodeID)) > BCVALUE ) {
         Normal(0, NodeID) = -1.0; Normal(1, NodeID) = 0.0;
       }
       // EDGE 3 y = -0.6
-      else if  ( (Coords(1, NodeID)) < -0.56 ){
+      else if  ( (Coords(1, NodeID)) < -BCVALUE ){
         Normal(0, NodeID) = 0.0; Normal(1, NodeID) = 1.0;
       }
       // EDGE 4 x = -0.6
-      else if  ( (Coords(0, NodeID)) < -0.56 ){
+      else if  ( (Coords(0, NodeID)) < -BCVALUE ){
         Normal(0, NodeID) = 1.0; Normal(1, NodeID) = 0.0;
       }
     }
@@ -401,7 +405,10 @@ int main(int narg, char **arg)
             (1.0/6.0) * (Stress(2, PDNRt)  * Normal(0, FENode) + Stress(1, PDNRt) *  Normal(1, FENode)) );
 
         // At the corners
-        if ( (FENode == 0) || (FENode == 24) || (FENode == 48) || (FENode == 72) ){
+//        if ( (FENode == 0) || (FENode == 24) || (FENode == 48) || (FENode == 72) ){
+       if ( ( fabs( fabs(Coords(0, FENode)) - fabs(Coords(1, FENode)) ) < 1.0e-8 ) &&
+              (fabs(Coords(0, FENode)) > BCVALUE) && (fabs(Coords(1, FENode)) > BCVALUE) ) 
+       {        
           Sx = ((1.0/3.0) * (Stress(0, PDNode) * Normal(0, NRt) + Stress(2, PDNode) * Normal(1, NRt)) +
               (1.0/6.0) * (Stress(0, PDNRt)  * Normal(0, NRt) + Stress(2, PDNRt)  * Normal(1, NRt)) +					      
               (1.0/3.0) * (Stress(0, PDNode) * Normal(0, NLt) + Stress(2, PDNode) * Normal(1, NLt)) +
@@ -486,7 +493,10 @@ int main(int narg, char **arg)
               1.*rcoeff * (x[3*PDNRt+1] - Coords(1, NRt))));
 
         // At the corners
-        if ( (FENode == 0) || (FENode == 24) || (FENode == 48) || (FENode == 72) ){
+//        if ( (FENode == 0) || (FENode == 24) || (FENode == 48) || (FENode == 72) ){
+	if ( ( fabs( fabs(Coords(0, FENode)) - fabs(Coords(1, FENode)) ) < 1.0e-8 ) &&
+              (fabs(Coords(0, FENode)) > BCVALUE) && (fabs(Coords(1, FENode)) > BCVALUE) )
+       {
           Sx = ((1.0/3.0) * ((Stress(0, PDNode) * Normal(0, NRt) + Stress(2, PDNode) * Normal(1, NRt)) +
                 rcoeff * (x[3*PDNode+0] - Coords(0, FENode))) +
               (1.0/6.0) * ((Stress(0, PDNRt)  * Normal(0, NRt) + Stress(2, PDNRt)  * Normal(1, NRt)) +	
@@ -580,7 +590,7 @@ int main(int narg, char **arg)
     lammps_put_coords(lmp, x);
     for(int i = 0; i < 1; ++i) 
     {
-      lmp->input->one("run 500");
+      lmp->input->one("run 2000");
       //      lmp->input->one("minimize 1.0e-12 1.0e-12 10000 100000");
     }
 
