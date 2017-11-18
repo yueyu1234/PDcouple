@@ -1,0 +1,27 @@
+1. compile lammps
+
+cd lammps-31May17/src
+
+make clean-all 
+
+make yes-* // * means the pakage you want to add 
+
+make serial
+
+2. compile FECode
+3. compile simple
+
+4. run in tests:
+
+./simple < ../atc_elasticity/simple/PD_Over/Quad_Mesh_Hole_Struc_1024_1152/o3/Quad_Mesh_Hole_Struc_1024_1152_3.fem ../atc_elasticity/simple/FE_Over/Quad_Mesh_Hole_Struc_1024_1152/o3/Quad_Mesh_Hole_Struc_1024_1152_3.fem 3 2.
+
+input 1: peridynamics mesh
+input 2: finite element mesh
+input 3: boundary condition. 1 for Dirichlet, 2 for Neumman, 3 for Robin
+input 4: Robin coefficient
+
+
+Change BCVALUE when switching between meshes:
+BCVALUE 0.66 for 816_952
+BCVALUE 0.56 for 1024_1152
+BCVALUE 0.46 for 1200_1320
