@@ -25,3 +25,16 @@ Change BCVALUE when switching between meshes:
 BCVALUE 0.66 for 816_952
 BCVALUE 0.56 for 1024_1152
 BCVALUE 0.46 for 1200_1320
+
+Mesh information: (all with finite element mesh size=0.05)
+816_952: finite element domain=[-1,-0.7]U[0.7,1], peridynamics domain varies according to o3, o4, or o5.
+1024_1152: finite element domain=[-1,-0.6]U[0.6,1]
+1200_1320: finite element domain=[-1,-0.5]U[0.5,1]
+o3: overlapping domain size=3*0.05 e.g., for 816_952 case, peridynamics domain=[-0.85,0.85]
+o4: overlapping domain size=4*0.05
+o5: overlapping domain size=5*0.05
+folder 1: peridynamics mesh size=finit element mesh size/2=0.05/2
+folder 2: peridynamics mesh size=finit element mesh size/3=0.05/3
+folder 3: peridynamics mesh size=finit element mesh size/4=0.05/4
+folder 4: peridynamics mesh size=finit element mesh size/5=0.05/5
+folder 5: peridynamics mesh size=finit element mesh size/6=0.05/6
