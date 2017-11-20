@@ -123,14 +123,14 @@ int main(int narg, char **arg)
   int ncoord = 2;
 
   // Should be used for non-damaged problems
-  double mu  = 10;
-  double nu  = 0.33333333333333333333333;
+  //double mu  = 10;
+  //double nu  = 0.33333333333333333333333;
   // Load
-  double load = 0.2e0/5.;
+  //double load = 0.2e0/5.;
 
-  // double mu   = 72e9;
-  //  double nu   = 0.33333333333333333333333;
-  //  double load = 2.0e6; // no damage
+  double mu   = 72e9;
+  double nu   = 0.33333333333333333333333;
+  double load = 2.0e8; // no damage
   //double load = 10.0e6;
 
 //  double analA = load/0.05/mu*(1.-nu)*(1.+nu);
@@ -237,7 +237,8 @@ int main(int narg, char **arg)
 
   double ElemEdge = abs( Coords(0, 1) - Coords(0, 0) );
   double rcoeff=atof(arg[3]); //Robin
-
+  
+  lammpsfile << "case: " << flag << " rcoef: " << rcoeff << endl;
 
   double analA = load/ElemEdge/mu*(1.-nu)*(1.+nu);
   double analB = -nu*analA/(1.-nu);
