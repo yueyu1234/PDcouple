@@ -38,7 +38,7 @@ using namespace std;
 using namespace LAMMPS_NS;
 
 #ifndef BCVALUE
-#define BCVALUE 0.66
+#define BCVALUE 0.56
 #endif
 
 // -------------------------------------------------------------
@@ -130,8 +130,8 @@ int main(int narg, char **arg)
 
   double mu   = 72e9;
   double nu   = 0.33333333333333333333333;
-  double load = 2.0e8; // no damage
-  //double load = 10.0e6;
+  //double load = 2.0e8; // no damage
+  double load = 10.0e6;
 
 //  double analA = load/0.05/mu*(1.-nu)*(1.+nu);
 //  double analB = -nu*analA/(1.-nu);
@@ -279,7 +279,7 @@ int main(int narg, char **arg)
   double diffx0    = 100.0;
   double diffFE    = 100.0;
   double diffFE0   = 100.0;
-  double analerror;
+  double analerror, lammperror;
   double initFE = 100.0;
 
   DENS_MAT Neighbor;
@@ -342,6 +342,9 @@ int main(int narg, char **arg)
   DENS_MAT coords_xy;
   DENS_MAT Stress;
   coords_xy.reset(number_dim, natoms);
+
+  lammps_get_coords(lmp,x);
+  for(int i = 0; i < 3*natoms; ++i) xe0[i] = x[i];
 
 
   while((tstp < ntstp)&&((diffFE/diffFE0 > CoupleTol) || (tstp < 2))) {
@@ -593,7 +596,7 @@ int main(int narg, char **arg)
     lammps_put_coords(lmp, x);
     for(int i = 0; i < 1; ++i) 
     {
-      lmp->input->one("run 2000");
+      lmp->input->one("run 10000");
       //      lmp->input->one("minimize 1.0e-12 1.0e-12 10000 100000");
     }
 
@@ -628,6 +631,11 @@ int main(int narg, char **arg)
     {
       analerror += (fesol(2*i)-analA*(Coords(0, i)+1.))*(fesol(2*i)-analA*(Coords(0, i)+1.)) + (fesol(2*i+1)-analB*(Coords(1, i)+1.))*(fesol(2*i+1)-analB*(Coords(1, i)+1.));
     }
+    lammperror = 0.0;
+    for(int i = 0; i < natoms; ++i)
+    {
+	lammperror += (x[3*i]-analA*(xe0[3*i]+1.)-xe0[3*i])*(x[3*i]-analA*(xe0[3*i]+1.)-xe0[3*i]) + (x[3*i+1]-analB*(xe0[3*i+1]+1.)-xe0[3*i+1])*(x[3*i+1]-analB*(xe0[3*i+1]+1.)-xe0[3*i+1]);
+    }
 
 
     if (tstp >= 1) diffFE0 = initFE;	
@@ -636,7 +644,7 @@ int main(int narg, char **arg)
     lammpsfile << " Loop Error: " << diffFE/diffFE0 << " theta: " << theta << " thetaPD: " << thetapd << endl;
 //    lammpsfile << " fesolsize: " << fesol.size() <<  " fesol1: " << fesol(2*1132) << " fesol2: " << fesol(2*1052) << " afesol1: " << analA*(Coords(0, 1132)) << " afesol2: " << analA*(Coords(0, 1052)) << endl;
 
-    errorfile << analerror << endl;
+    errorfile << analerror << " " << lammperror << endl;
 
     tstp++;
   }
