@@ -41,6 +41,10 @@ using namespace LAMMPS_NS;
 #define BCVALUE 0.56
 #endif
 
+#ifndef TLOAD
+#define TLOAD 10
+#endif
+
 // -------------------------------------------------------------
 // Define functions */
 // -------------------------------------------------------------
@@ -131,7 +135,8 @@ int main(int narg, char **arg)
   double mu   = 72e9;
   double nu   = 0.33333333333333333333333;
   //double load = 2.0e8; // no damage
-  double load = 10.0e6;
+  double load = 2.5e7;
+  double topload = 3e7;
 
 //  double analA = load/0.05/mu*(1.-nu)*(1.+nu);
 //  double analB = -nu*analA/(1.-nu);
@@ -153,7 +158,7 @@ int main(int narg, char **arg)
   errorfile.open ("errorconv.txt");
 
   FE_Engine feEngine(File);
-  feEngine.FEsetup(mu, nu, ndof, ncoord, load);
+  feEngine.FEsetup1(mu, nu, ndof, ncoord, load);
 
   fclose (File);
   cout << "FE was set" << endl;
@@ -274,7 +279,7 @@ int main(int narg, char **arg)
   // -------------------------------------------------------------
   int mytsp = 0;
   int tstp = 0;
-  double CoupleTol = 1e-15;
+  double CoupleTol = 1e-8;
   double diffx     = 100.0;
   double diffx0    = 100.0;
   double diffFE    = 100.0;
@@ -346,7 +351,12 @@ int main(int narg, char **arg)
   lammps_get_coords(lmp,x);
   for(int i = 0; i < 3*natoms; ++i) xe0[i] = x[i];
 
-
+for (int loadi=0; loadi<TLOAD; loadi++)
+{
+  feEngine.FEsetup1(mu, nu, ndof, ncoord, load+(topload-load)/TLOAD*(loadi+1));
+  tstp = 0;
+  diffFE    = 100.0;
+  diffFE0    = 100.0;
   while((tstp < ntstp)&&((diffFE/diffFE0 > CoupleTol) || (tstp < 2))) {
 
     diffx  = 0.0;
@@ -648,6 +658,7 @@ int main(int narg, char **arg)
 
     tstp++;
   }
+}
 
   // -------------------------------------------------------------
   // Ending codes */

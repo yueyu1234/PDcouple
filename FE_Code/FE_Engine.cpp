@@ -477,14 +477,14 @@ void FE_Engine::FEsetup1(double mu,
 	DENS_VEC dirichlet_values;
 	int dirichletN = feMesh->get_Node_xy(0.0, 1.0);
 
-	// here I'm fixing only two nodex
+	// here I'm fixing only four nodex
 	dirichletnodes.reset(2);
 	dirichletnodes(0) = dirichletN;
 	dirichletN = feMesh->get_Node_xy(0.0, -1.0);
 	dirichletnodes(1) = dirichletN;
 	dirichlet_values.reset(2);
 	dirichlet_values(0) = 0.0;
-	dirichlet_values(0) = 0.0;
+	dirichlet_values(1) = 0.0;
 
 	DENS_VEC Fdrchlt;
 	Fdrchlt.reset(nTotalDofs);
