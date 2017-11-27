@@ -114,6 +114,13 @@ public:
 			int ncoord,
 			double load);
 
+
+	void FEsetupload1(double mu,
+			double nu,
+			int ndof,
+			int ncoord,
+			double load);
+
 	// used for Neumann (June 27/2016)
 	void GenerateMesh(DENS_MAT coords_xy0, DENS_MAT &Connectivity);
 	void ComputeStress(double PoissonRatio, double YoungModulus, 

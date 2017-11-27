@@ -38,11 +38,11 @@ using namespace std;
 using namespace LAMMPS_NS;
 
 #ifndef BCVALUE
-#define BCVALUE 0.56
+#define BCVALUE 0.66
 #endif
 
 #ifndef TLOAD
-#define TLOAD 10
+#define TLOAD 1
 #endif
 
 // -------------------------------------------------------------
@@ -127,16 +127,16 @@ int main(int narg, char **arg)
   int ncoord = 2;
 
   // Should be used for non-damaged problems
-  //double mu  = 10;
-  //double nu  = 0.33333333333333333333333;
+//  double mu  = 10;
+//  double nu  = 0.33333333333333333333333;
   // Load
-  //double load = 0.2e0/5.;
+//  double load = 0.2e0/5.;
 
   double mu   = 72e9;
   double nu   = 0.33333333333333333333333;
-  //double load = 2.0e8; // no damage
-  double load = 2.5e7;
-  double topload = 3e7;
+  double load = 2.0e8; // no damage
+//  double load = 2.5e7;
+  double topload = 5e7;
 
 //  double analA = load/0.05/mu*(1.-nu)*(1.+nu);
 //  double analB = -nu*analA/(1.-nu);
@@ -158,7 +158,7 @@ int main(int narg, char **arg)
   errorfile.open ("errorconv.txt");
 
   FE_Engine feEngine(File);
-  feEngine.FEsetup1(mu, nu, ndof, ncoord, load);
+  feEngine.FEsetup(mu, nu, ndof, ncoord, load);
 
   fclose (File);
   cout << "FE was set" << endl;
@@ -353,7 +353,7 @@ int main(int narg, char **arg)
 
 for (int loadi=0; loadi<TLOAD; loadi++)
 {
-  feEngine.FEsetup1(mu, nu, ndof, ncoord, load+(topload-load)/TLOAD*(loadi+1));
+//  feEngine.FEsetup1(mu, nu, ndof, ncoord, load+(topload-load)/TLOAD*(loadi+1));
   tstp = 0;
   diffFE    = 100.0;
   diffFE0    = 100.0;
@@ -421,7 +421,7 @@ for (int loadi=0; loadi<TLOAD; loadi++)
             (1.0/6.0) * (Stress(2, PDNRt)  * Normal(0, FENode) + Stress(1, PDNRt) *  Normal(1, FENode)) );
 
         // At the corners
-//        if ( (FENode == 0) || (FENode == 24) || (FENode == 48) || (FENode == 72) ){
+//        if ( (FENode == 0) || (FENode == 24) || (FENode == 48) || (FENode == 72) )
        if ( ( fabs( fabs(Coords(0, FENode)) - fabs(Coords(1, FENode)) ) < 1.0e-8 ) &&
               (fabs(Coords(0, FENode)) > BCVALUE) && (fabs(Coords(1, FENode)) > BCVALUE) ) 
        {        
@@ -509,7 +509,7 @@ for (int loadi=0; loadi<TLOAD; loadi++)
               1.*rcoeff * (x[3*PDNRt+1] - Coords(1, NRt))));
 
         // At the corners
-//        if ( (FENode == 0) || (FENode == 24) || (FENode == 48) || (FENode == 72) ){
+//        if ( (FENode == 0) || (FENode == 24) || (FENode == 48) || (FENode == 72) )
 	if ( ( fabs( fabs(Coords(0, FENode)) - fabs(Coords(1, FENode)) ) < 1.0e-8 ) &&
               (fabs(Coords(0, FENode)) > BCVALUE) && (fabs(Coords(1, FENode)) > BCVALUE) )
        {
@@ -606,7 +606,7 @@ for (int loadi=0; loadi<TLOAD; loadi++)
     lammps_put_coords(lmp, x);
     for(int i = 0; i < 1; ++i) 
     {
-      lmp->input->one("run 10000");
+      lmp->input->one("run 5000");
       //      lmp->input->one("minimize 1.0e-12 1.0e-12 10000 100000");
     }
 
