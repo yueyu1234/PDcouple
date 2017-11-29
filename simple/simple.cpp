@@ -38,7 +38,7 @@ using namespace std;
 using namespace LAMMPS_NS;
 
 #ifndef BCVALUE
-#define BCVALUE 0.66
+#define BCVALUE 0.56
 #endif
 
 #ifndef TLOAD
@@ -127,23 +127,23 @@ int main(int narg, char **arg)
   int ncoord = 2;
 
   // Should be used for non-damaged problems
-//  double mu  = 10;
-//  double nu  = 0.33333333333333333333333;
+  double mu  = 10;
+  double nu  = 0.33333333333333333333333;
   // Load
-//  double load = 0.2e0/5.;
+  double load = 0.2e0/5.;
 
-  double mu   = 72e9;
-  double nu   = 0.33333333333333333333333;
-  double load = 2.0e8; // no damage
+//  double mu   = 72e9;
+//  double nu   = 0.33333333333333333333333;
+////  double load = 2.0e8; // no damage
 //  double load = 2.5e7;
-  double topload = 5e7;
+//  double topload = 5e7;
 
 //  double analA = load/0.05/mu*(1.-nu)*(1.+nu);
 //  double analB = -nu*analA/(1.-nu);
 
 
   int flag = atoi(arg[2]); // uses 1 dirichet; 2 for neumann; 3 robin
-  int thetaflag = 1; //uses 0 without aitkenl 1 for aitken
+  int thetaflag = 0; //uses 0 without aitkenl 1 for aitken
 
   FILE *File;
 
@@ -279,7 +279,7 @@ int main(int narg, char **arg)
   // -------------------------------------------------------------
   int mytsp = 0;
   int tstp = 0;
-  double CoupleTol = 1e-8;
+  double CoupleTol = 1e-15;
   double diffx     = 100.0;
   double diffx0    = 100.0;
   double diffFE    = 100.0;
@@ -606,7 +606,7 @@ for (int loadi=0; loadi<TLOAD; loadi++)
     lammps_put_coords(lmp, x);
     for(int i = 0; i < 1; ++i) 
     {
-      lmp->input->one("run 5000");
+      lmp->input->one("run 2000");
       //      lmp->input->one("minimize 1.0e-12 1.0e-12 10000 100000");
     }
 
