@@ -530,6 +530,8 @@ for (int loadi=0; loadi<TLOAD; loadi++)
                 rcoeff * (x[3*PDNode+1] - Coords(1, FENode))) +
               (1.0/6.0) * ((Stress(2, PDNLt)  * Normal(0, NLt) + Stress(1, PDNLt)  * Normal(1, NLt)) +
                 1.*rcoeff * (x[3*PDNLt+1] - Coords(1, NLt))));
+
+          cout << "boundary coord:" << Coords(0, FENode) << " " << Coords(1, FENode) << endl;
         }
 
         // x direction
@@ -606,8 +608,8 @@ for (int loadi=0; loadi<TLOAD; loadi++)
     lammps_put_coords(lmp, x);
     for(int i = 0; i < 1; ++i) 
     {
-      lmp->input->one("run 2000");
-      //      lmp->input->one("minimize 1.0e-12 1.0e-12 10000 100000");
+//      lmp->input->one("run 2000");
+      lmp->input->one("minimize 1.0e-16 1.0e-16 10000 100000");
     }
 
     // no LAMMPS class function for this

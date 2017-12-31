@@ -114,6 +114,12 @@ public:
 			int ncoord,
 			double load);
 
+	void FEsetup2(double mu,
+			double nu,
+			int ndof,
+			int ncoord,
+			double load);
+
 	void FEsetupload1(double mu,
 			double nu,
 			int ndof,
