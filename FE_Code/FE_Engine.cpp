@@ -11,6 +11,27 @@ using namespace std;
 #include "math.h"
 
 
+#ifndef RATIO
+#define RATIO 0.05
+#endif
+
+#ifndef BODYLOAD
+#define BODYLOAD (-24.)
+#endif
+
+#ifndef MESH
+#define MESH 0.05
+#endif
+
+#ifndef MU
+#define MU 1.
+#endif
+
+#ifndef LMU
+#define LMU 4.
+#endif
+
+
 // -------------------------------------------------------------
 // -------------------------------------------------------------
 //   class FE_Engine
@@ -157,9 +178,10 @@ void FE_Engine::compute_rhs_vector(DENS_VEC &bc, DENS_VEC &value)
 
 	for(int n = 0; n < nfix; ++n) {
 		rw = nDofsPerNode * a(n) + b(n);
-		rhs( rw ) = value(n);
+		rhs( rw ) = rhs( rw ) + value(n);
 	}
 }
+
 
 void FE_Engine::compute_dirichlet_bc(DENS_VEC &bc, DENS_VEC &value, DENS_VEC &F)
 {
@@ -560,30 +582,35 @@ void FE_Engine::FEsetup2(double mu,
 {
 	time_t start,end;
 
-	// Loading application (x=1,y)
-	double dxv = 1.0;
+	// BC application
+	double dxv = -1.0;
+	DENS_VEC dirichletnodes;
+	DENS_VEC dirichlet_values;
+	feMesh->get_Nodes_x(dxv, dirichletnodes);
+
+	// BC application
+	dxv = -1.0;
+	DENS_VEC dirichletnodes1;
+	DENS_VEC dirichlet_values1;
+	feMesh->get_Nodes_y(dxv, dirichletnodes1);
+
+        // BC application
+	dxv = 1.0;
+	DENS_VEC dirichletnodes2;
+	DENS_VEC dirichlet_values2;
+	feMesh->get_Nodes_y(dxv, dirichletnodes2);
+
+	// BC application
+	dxv = 1.0;
+	DENS_VEC dirichletnodes3;
+	DENS_VEC dirichlet_values3;
+        feMesh->get_Nodes_x(dxv, dirichletnodes3);
+
+/*	// Loading application
+	dxv = 1.0;
 	DENS_VEC rhsnodes;
 	DENS_VEC rhs_values;
-	feMesh->get_Nodes_x(dxv, rhsnodes);
-
-	// Loading application (x=-1,y)
-	dxv = -1.0;
-	DENS_VEC rhsnodes1;
-	DENS_VEC rhs_values1;
-	feMesh->get_Nodes_x(dxv, rhsnodes1);
-    
- 	// Loading application (x,y=1)
-    dxv = 1.0;
-	DENS_VEC rhsnodes2;
-	DENS_VEC rhs_values2;
-	feMesh->get_Nodes_y(dxv, rhsnodes2);
-
-	// Loading application (x,y=-1)
-	dxv = -1.0;
-	DENS_VEC rhsnodes3;
-	DENS_VEC rhs_values3;
-	feMesh->get_Nodes_y(dxv, rhsnodes3);
-    
+	feMesh->get_Nodes_x(dxv, rhsnodes);*/
 
 	// -------------------------------------------------------------
 	// Material obj
@@ -605,95 +632,364 @@ void FE_Engine::FEsetup2(double mu,
 	time (&end);
 	fprintf ( stdout, "\n Time elapsed...:  %f (sec) ", difftime (end,start) );
 
-	int nTotalDofs   = GlbStiffMatrix.nRows();
+	// -------------------------------------------------------------
+	// compute compute dirichlet bc */
+        // -------------------------------------------------------------
+        int nTotalDofs   = GlbStiffMatrix.nRows();
+        rhs.reset(nTotalDofs);        
+        DENS_MAT Coords;
+        Coords =  feMesh->nodal_coordinates();
 
-	// BC application
-	DENS_VEC dirichletnodes(1);
-	DENS_VEC dirichlet_values(1);
-	int dirichletN = feMesh->get_Node_xy(0.0, 0.0);
+        for(int n = 0; n < nTotalDofs; ) {
+          rhs(n) = rhs(n) + BODYLOAD * RATIO * MESH * MESH;
+          n++;
+          rhs(n) = rhs(n) + 0;
+          n++;
+        }
 
-	// here I'm fixing only 1 nodex
-//	dirichletnodes.reset(1);
-	dirichletnodes(0) = dirichletN;
-//	dirichletN = feMesh->get_Node_xy(0.0, -1.0);
-//	dirichletnodes(1) = dirichletN;
-//	dirichlet_values.reset(1);
-	dirichlet_values(0) = 0.0;
-//	dirichlet_values(1) = 0.0;
+        dirichlet_values.reset(dirichletnodes.size()*2);
+        int idrch = 0;
+	for(int i = 0; i < dirichletnodes.size(); ++i) {
+		dirichlet_values(2*idrch) = 0.0;
+                dirichlet_values(2*idrch+1) = 0.0;
+//                rhs(2*dirichletnodes(idrch)+0) = 0.0;
+//                rhs(2*dirichletnodes(idrch)+1) = 0.0;
+                idrch++;
+	}
+//	DENS_VEC Fdrchlt;
+//	Fdrchlt.reset(nTotalDofs);
+	compute_dirichlet_bc(dirichletnodes, dirichlet_values, rhs);
 
-	DENS_VEC Fdrchlt;
-	Fdrchlt.reset(nTotalDofs);
-	compute_dirichlet_bc_x(dirichletnodes, dirichlet_values, Fdrchlt);
 
-//	dirichletN = feMesh->get_Node_xy(0.0, 0.0);
-//	dirichletnodes(0) = dirichletN;
-//	dirichletN = feMesh->get_Node_xy(-1.0, 0.0);
-//	dirichletnodes(1) = dirichletN;
-//	dirichlet_values(0) = 0.0;
-//	dirichlet_values(1) = 0.0;
-	compute_dirichlet_bc_y(dirichletnodes, dirichlet_values, Fdrchlt);
+        dirichlet_values1.reset(dirichletnodes1.size()*2);
+        idrch = 0;
+        for(int i = 0; i < dirichletnodes1.size(); ++i) {
+          dirichlet_values1(2*idrch) = RATIO*(Coords(0, dirichletnodes1(idrch))*Coords(0, dirichletnodes1(idrch))-1.);
+          dirichlet_values1(2*idrch+1) = 0.0;
+          idrch++;
+        }
+//        DENS_VEC Fdrchlt1;
+ //       Fdrchlt1.reset(nTotalDofs);
+        compute_dirichlet_bc(dirichletnodes1, dirichlet_values1, rhs);
+//        idrch = 0;
+//        for(int i = 0; i < dirichletnodes1.size(); ++i) {
+//          dirichlet_values1(idrch) = 0.05*(Coords(0, dirichletnodes1(idrch))*Coords(0, dirichletnodes1(idrch))-1.);
+ //         rhs(2*dirichletnodes1(idrch)+0) = 0.05*(Coords(0, dirichletnodes1(idrch))*Coords(0, dirichletnodes1(idrch))-1.);
+//          rhs(2*dirichletnodes1(idrch)+1) = 0.0;
+//          idrch++;
+//        }
+//        compute_dirichlet_bc_x(dirichletnodes1, dirichlet_values1, Fdrchlt1);
 
-	// BC application
-    // Yue, if you look at the FEsetup1 I applied some dirichlet restriction 
-    // in order to keep some simetry and to make sure that I'g get convergence
-    // I don't see any simetry to the shear problem other then the central 
-    // point of the geometry been fixed. The problem is that there is no FE
-    // node there. I'm not sure if the FE solver will converge. I didn't
-    // have time to test it.
+
+        dirichlet_values2.reset(dirichletnodes2.size()*2);
+        idrch = 0;
+        for(int i = 0; i < dirichletnodes2.size(); ++i) {
+          dirichlet_values2(2*idrch) = RATIO*(Coords(0, dirichletnodes2(idrch))*Coords(0, dirichletnodes2(idrch))-1.);
+          dirichlet_values2(2*idrch+1) = 0.0;
+          idrch++;
+        }
+//        DENS_VEC Fdrchlt2;
+//        Fdrchlt2.reset(nTotalDofs);
+        compute_dirichlet_bc(dirichletnodes2, dirichlet_values2, rhs);
+//        idrch = 0;
+//        for(int i = 0; i < dirichletnodes2.size(); ++i) {
+//          dirichlet_values2(idrch) = 0.05*(Coords(0, dirichletnodes2(idrch))*Coords(0, dirichletnodes2(idrch))-1.);
+//          rhs(2*dirichletnodes2(idrch)+0) = 0.05*(Coords(0, dirichletnodes2(idrch))*Coords(0, dirichletnodes2(idrch))-1.);
+//          rhs(2*dirichletnodes2(idrch)+1) = 0.0;
+//          cout << Coords(0, dirichletnodes2(idrch)) << " " << Coords(1, dirichletnodes2(idrch)) << " " << rhs(2*dirichletnodes2(idrch)+0) << endl;
+//          idrch++;
+//        }
+//        compute_dirichlet_bc_x(dirichletnodes2, dirichlet_values2, Fdrchlt2);
+
+        dirichlet_values3.reset(dirichletnodes3.size()*2);
+        idrch = 0;
+        for(int i = 0; i < dirichletnodes3.size(); ++i) {
+          dirichlet_values3(2*idrch) = 0.0;
+          dirichlet_values3(2*idrch+1) = 0.0;
+//          rhs(2*dirichletnodes3(idrch)+0) = 0.0;
+//          rhs(2*dirichletnodes3(idrch)+1) = 0.0;
+          idrch++;
+        }
+//        DENS_VEC Fdrchlt3;
+//        Fdrchlt3.reset(nTotalDofs);
+//        compute_dirichlet_bc_y(dirichletnodes3, dirichlet_values3, Fdrchlt3);
+        compute_dirichlet_bc(dirichletnodes3, dirichlet_values3, rhs);
+
+
+        // -------------------------------------------------------------
 
 	// -------------------------------------------------------------
 	// compute right hand side */
 	// -------------------------------------------------------------
-	rhs.reset(nTotalDofs); // global load vector
 
-	rhs_values.reset(2 * rhsnodes.size());
+//      rhs.reset(nTotalDofs);        
+/*	rhs_values.reset(2 * rhsnodes.size());
 	int irhs = 0;
-	double dfsload = load/rhsnodes.size();
+	double dfsload = load * MESH;// /rhsnodes.size();
+        fprintf(stdout, "rhsnodes.size()=%d\n",rhsnodes.size());
 	for(int i = 0; i < rhsnodes.size(); ++i) {
-		rhs_values(irhs++) = 0.0;
-		rhs_values(irhs++) = -dfsload;
+		rhs_values(irhs) = dfsload;
+                irhs++;
+		rhs_values(irhs) = 0.0;
+                irhs++;
+        }
+        compute_rhs_vector(rhsnodes, rhs_values);
+
+        int Corner_node = feMesh->get_Node_xy(1.0, 1.0);
+        rhs(2*Corner_node+0) = rhs(2*Corner_node+0)-dfsload/2.0;
+        rhs(2*Corner_node+1) = 0.0;
+
+        Corner_node = feMesh->get_Node_xy(1.0, -1.0);
+        rhs(2*Corner_node+0) = rhs(2*Corner_node+0)-dfsload/2.0;
+        rhs(2*Corner_node+1) = 0.0;*/
+
+/*        for(int n = 0; n < nTotalDofs; ) {
+          rhs(n) = rhs(n) + BODYLOAD * 2./3. * MESH * MESH;
+          n++;
+          rhs(n) = rhs(n) + 0;
+          n++;
+        }*/
+/*        for(int i = 0; i < dirichletnodes.size(); ++i) {
+          rhs(2*dirichletnodes(i)+0) = rhs(2*dirichletnodes(i)+0) - BODYLOAD * 1./3. * MESH * MESH;
+          rhs(2*dirichletnodes(i)+1) = rhs(2*dirichletnodes(i)+1) - 0.;
+        }
+        for(int i = 0; i < dirichletnodes1.size(); ++i) {
+          rhs(2*dirichletnodes1(i)+0) = rhs(2*dirichletnodes1(i)+0) - BODYLOAD * 1./3. * MESH * MESH;
+          rhs(2*dirichletnodes1(i)+1) = rhs(2*dirichletnodes1(i)+1) - 0.;
+        }
+        for(int i = 0; i < dirichletnodes2.size(); ++i) {
+          rhs(2*dirichletnodes2(i)+0) = rhs(2*dirichletnodes2(i)+0) - BODYLOAD * 1./3. * MESH * MESH;
+          rhs(2*dirichletnodes2(i)+1) = rhs(2*dirichletnodes2(i)+1) - 0.;
+        }
+        for(int i = 0; i < rhsnodes.size(); ++i) {
+          rhs(2*rhsnodes(i)+0) = rhs(2*rhsnodes(i)+0) - BODYLOAD * 1./3. * MESH * MESH;
+          rhs(2*rhsnodes(i)+1) = rhs(2*rhsnodes(i)+1) - 0.;
+        }
+
+        Corner_node = feMesh->get_Node_xy(1.0, 1.0);
+        rhs(2*Corner_node+0) = rhs(2*Corner_node+0) + BODYLOAD * 1./6. * MESH * MESH;
+        rhs(2*Corner_node+1) = 0.0;
+
+        Corner_node = feMesh->get_Node_xy(1.0, -1.0);
+        rhs(2*Corner_node+0) = rhs(2*Corner_node+0) + BODYLOAD * 1./6. * MESH * MESH;
+        rhs(2*Corner_node+1) = 0.0;
+
+        Corner_node = feMesh->get_Node_xy(-1.0, 1.0);
+        rhs(2*Corner_node+0) = rhs(2*Corner_node+0) + BODYLOAD * 1./6. * MESH * MESH;
+        rhs(2*Corner_node+1) = 0.0;
+
+        Corner_node = feMesh->get_Node_xy(-1.0, -1.0);
+        rhs(2*Corner_node+0) = rhs(2*Corner_node+0) + BODYLOAD * 1./6. * MESH * MESH;
+        rhs(2*Corner_node+1) = 0.0;        */
+}
+
+void FE_Engine::FEsetup3(double mu,
+		double nu,
+		int ndof,
+		int ncoord,
+		double load)
+{
+	time_t start,end;
+
+	// BC application
+	double dxv = -1.0;
+	DENS_VEC dirichletnodes;
+	DENS_VEC dirichlet_values;
+	feMesh->get_Nodes_x(dxv, dirichletnodes);
+
+	// BC application
+	dxv = -1.0;
+	DENS_VEC dirichletnodes1;
+	DENS_VEC dirichlet_values1;
+	feMesh->get_Nodes_y(dxv, dirichletnodes1);
+
+        // BC application
+	dxv = 1.0;
+	DENS_VEC dirichletnodes2;
+	DENS_VEC dirichlet_values2;
+	feMesh->get_Nodes_y(dxv, dirichletnodes2);
+
+	// BC application
+	dxv = 1.0;
+	DENS_VEC dirichletnodes3;
+	DENS_VEC dirichlet_values3;
+        feMesh->get_Nodes_x(dxv, dirichletnodes3);
+
+/*	// Loading application
+	dxv = 1.0;
+	DENS_VEC rhsnodes;
+	DENS_VEC rhs_values;
+	feMesh->get_Nodes_x(dxv, rhsnodes);*/
+
+	// -------------------------------------------------------------
+	// Material obj
+	// -------------------------------------------------------------
+	Material Material(mu, nu, ndof, ncoord);
+
+	// -------------------------------------------------------------
+	// Quadrilateral obj
+	// -------------------------------------------------------------
+	FE_ElementQuad feElement;
+
+
+	// -------------------------------------------------------------
+	// assembly global stiffness matrix
+	// -------------------------------------------------------------
+	time (&start);
+	fprintf ( stdout, "\n\n Computing gobal stiffness matrix... " );
+	compute_stiffness_matrix(Material, feElement);
+	time (&end);
+	fprintf ( stdout, "\n Time elapsed...:  %f (sec) ", difftime (end,start) );
+
+	// -------------------------------------------------------------
+	// compute compute dirichlet bc */
+        // -------------------------------------------------------------
+        int nTotalDofs   = GlbStiffMatrix.nRows();
+        rhs.reset(nTotalDofs);        
+        DENS_MAT Coords;
+        Coords =  feMesh->nodal_coordinates();
+
+        for(int n = 0; n < nTotalDofs; ) {
+          rhs(n) = rhs(n) + 0;//BODYLOAD * RATIO * MESH * MESH;
+          n++;
+          rhs(n) = rhs(n) + 0;
+          n++;
+        }
+
+        dirichlet_values.reset(dirichletnodes.size()*2);
+        int idrch = 0;
+	for(int i = 0; i < dirichletnodes.size(); ++i) {
+		dirichlet_values(2*idrch) = RATIO*(MU*(Coords(0, dirichletnodes(idrch))*Coords(0, dirichletnodes(idrch)))-LMU*(Coords(1, dirichletnodes(idrch))*Coords(1, dirichletnodes(idrch))));
+                dirichlet_values(2*idrch+1) = RATIO*(LMU*(Coords(0, dirichletnodes(idrch))*Coords(0, dirichletnodes(idrch)))-MU*(Coords(1, dirichletnodes(idrch))*Coords(1, dirichletnodes(idrch))));
+//                rhs(2*dirichletnodes(idrch)+0) = 0.0;
+//                rhs(2*dirichletnodes(idrch)+1) = 0.0;
+                idrch++;
 	}
-	compute_rhs_vector(rhsnodes, rhs_values);
+//	DENS_VEC Fdrchlt;
+//	Fdrchlt.reset(nTotalDofs);
+	compute_dirichlet_bc(dirichletnodes, dirichlet_values, rhs);
 
-	rhs_values1.reset(2 * rhsnodes1.size());
-	irhs = 0;
-	for(int i = 0; i < rhsnodes1.size(); ++i) {
-		rhs_values1(irhs++) = 0.0;
-		rhs_values1(irhs++) = dfsload;
-	}
-	compute_rhs_vector(rhsnodes1, rhs_values1);
-    
-    rhs_values2.reset(2 * rhsnodes2.size());
-	irhs = 0;
-	for(int i = 0; i < rhsnodes2.size(); ++i) {
-		rhs_values2(irhs++) = -dfsload;
-		rhs_values2(irhs++) = 0.0;
-	}
-	compute_rhs_vector(rhsnodes2, rhs_values2);
-    
-    rhs_values3.reset(2 * rhsnodes3.size());
-	irhs = 0;
-	for(int i = 0; i < rhsnodes3.size(); ++i) {
-		rhs_values3(irhs++) = dfsload;
-		rhs_values3(irhs++) = 0.0;
-	}
-	compute_rhs_vector(rhsnodes3, rhs_values3);
 
-	int Corner_node = feMesh->get_Node_xy(1.0, 1.0);
-	rhs(2*Corner_node+0) = rhs(2*Corner_node+0)/2.0;
-	rhs(2*Corner_node+1) = rhs(2*Corner_node+1)/2.0;
+        dirichlet_values1.reset(dirichletnodes1.size()*2);
+        idrch = 0;
+        for(int i = 0; i < dirichletnodes1.size(); ++i) {
+          dirichlet_values1(2*idrch) = RATIO*(MU*(Coords(0, dirichletnodes1(idrch))*Coords(0, dirichletnodes1(idrch)))-LMU*(Coords(1, dirichletnodes1(idrch))*Coords(1, dirichletnodes1(idrch))));
+          dirichlet_values1(2*idrch+1) = RATIO*(LMU*(Coords(0, dirichletnodes1(idrch))*Coords(0, dirichletnodes1(idrch)))-MU*(Coords(1, dirichletnodes1(idrch))*Coords(1, dirichletnodes1(idrch))));
+          idrch++;
+        }
+//        DENS_VEC Fdrchlt1;
+ //       Fdrchlt1.reset(nTotalDofs);
+        compute_dirichlet_bc(dirichletnodes1, dirichlet_values1, rhs);
+//        idrch = 0;
+//        for(int i = 0; i < dirichletnodes1.size(); ++i) {
+//          dirichlet_values1(idrch) = 0.05*(Coords(0, dirichletnodes1(idrch))*Coords(0, dirichletnodes1(idrch))-1.);
+ //         rhs(2*dirichletnodes1(idrch)+0) = 0.05*(Coords(0, dirichletnodes1(idrch))*Coords(0, dirichletnodes1(idrch))-1.);
+//          rhs(2*dirichletnodes1(idrch)+1) = 0.0;
+//          idrch++;
+//        }
+//        compute_dirichlet_bc_x(dirichletnodes1, dirichlet_values1, Fdrchlt1);
 
-	Corner_node = feMesh->get_Node_xy(1.0, -1.0);
-	rhs(2*Corner_node+0) = rhs(2*Corner_node+0)/2.0;
-	rhs(2*Corner_node+1) = rhs(2*Corner_node+1)/2.0;
 
-	Corner_node = feMesh->get_Node_xy(-1.0, -1.0);
-	rhs(2*Corner_node+0) = rhs(2*Corner_node+0)/2.0;
-	rhs(2*Corner_node+1) = rhs(2*Corner_node+1)/2.0;
+        dirichlet_values2.reset(dirichletnodes2.size()*2);
+        idrch = 0;
+        for(int i = 0; i < dirichletnodes2.size(); ++i) {
+          dirichlet_values2(2*idrch) = RATIO*(MU*(Coords(0, dirichletnodes2(idrch))*Coords(0, dirichletnodes2(idrch)))-LMU*(Coords(1, dirichletnodes2(idrch))*Coords(1, dirichletnodes2(idrch))));
+          dirichlet_values2(2*idrch+1) = RATIO*(LMU*(Coords(0, dirichletnodes2(idrch))*Coords(0, dirichletnodes2(idrch)))-MU*(Coords(1, dirichletnodes2(idrch))*Coords(1, dirichletnodes2(idrch))));
+          idrch++;
+        }
+//        DENS_VEC Fdrchlt2;
+//        Fdrchlt2.reset(nTotalDofs);
+        compute_dirichlet_bc(dirichletnodes2, dirichlet_values2, rhs);
+//        idrch = 0;
+//        for(int i = 0; i < dirichletnodes2.size(); ++i) {
+//          dirichlet_values2(idrch) = 0.05*(Coords(0, dirichletnodes2(idrch))*Coords(0, dirichletnodes2(idrch))-1.);
+//          rhs(2*dirichletnodes2(idrch)+0) = 0.05*(Coords(0, dirichletnodes2(idrch))*Coords(0, dirichletnodes2(idrch))-1.);
+//          rhs(2*dirichletnodes2(idrch)+1) = 0.0;
+//          cout << Coords(0, dirichletnodes2(idrch)) << " " << Coords(1, dirichletnodes2(idrch)) << " " << rhs(2*dirichletnodes2(idrch)+0) << endl;
+//          idrch++;
+//        }
+//        compute_dirichlet_bc_x(dirichletnodes2, dirichlet_values2, Fdrchlt2);
 
-	Corner_node = feMesh->get_Node_xy(-1.0, 1.0);
-	rhs(2*Corner_node+0) = rhs(2*Corner_node+0)/2.0;
-	rhs(2*Corner_node+1) = rhs(2*Corner_node+1)/2.0;
+        dirichlet_values3.reset(dirichletnodes3.size()*2);
+        idrch = 0;
+        for(int i = 0; i < dirichletnodes3.size(); ++i) {
+          dirichlet_values3(2*idrch) = RATIO*(MU*(Coords(0, dirichletnodes3(idrch))*Coords(0, dirichletnodes3(idrch)))-LMU*(Coords(1, dirichletnodes3(idrch))*Coords(1, dirichletnodes3(idrch))));
+          dirichlet_values3(2*idrch+1) = RATIO*(LMU*(Coords(0, dirichletnodes3(idrch))*Coords(0, dirichletnodes3(idrch)))-MU*(Coords(1, dirichletnodes3(idrch))*Coords(1, dirichletnodes3(idrch))));
+//          rhs(2*dirichletnodes3(idrch)+0) = 0.0;
+//          rhs(2*dirichletnodes3(idrch)+1) = 0.0;
+          idrch++;
+        }
+//        DENS_VEC Fdrchlt3;
+//        Fdrchlt3.reset(nTotalDofs);
+//        compute_dirichlet_bc_y(dirichletnodes3, dirichlet_values3, Fdrchlt3);
+        compute_dirichlet_bc(dirichletnodes3, dirichlet_values3, rhs);
+
+
+        // -------------------------------------------------------------
+
+	// -------------------------------------------------------------
+	// compute right hand side */
+	// -------------------------------------------------------------
+
+//      rhs.reset(nTotalDofs);        
+/*	rhs_values.reset(2 * rhsnodes.size());
+	int irhs = 0;
+	double dfsload = load * MESH;// /rhsnodes.size();
+        fprintf(stdout, "rhsnodes.size()=%d\n",rhsnodes.size());
+	for(int i = 0; i < rhsnodes.size(); ++i) {
+		rhs_values(irhs) = dfsload;
+                irhs++;
+		rhs_values(irhs) = 0.0;
+                irhs++;
+        }
+        compute_rhs_vector(rhsnodes, rhs_values);
+
+        int Corner_node = feMesh->get_Node_xy(1.0, 1.0);
+        rhs(2*Corner_node+0) = rhs(2*Corner_node+0)-dfsload/2.0;
+        rhs(2*Corner_node+1) = 0.0;
+
+        Corner_node = feMesh->get_Node_xy(1.0, -1.0);
+        rhs(2*Corner_node+0) = rhs(2*Corner_node+0)-dfsload/2.0;
+        rhs(2*Corner_node+1) = 0.0;*/
+
+/*        for(int n = 0; n < nTotalDofs; ) {
+          rhs(n) = rhs(n) + BODYLOAD * 2./3. * MESH * MESH;
+          n++;
+          rhs(n) = rhs(n) + 0;
+          n++;
+        }*/
+/*        for(int i = 0; i < dirichletnodes.size(); ++i) {
+          rhs(2*dirichletnodes(i)+0) = rhs(2*dirichletnodes(i)+0) - BODYLOAD * 1./3. * MESH * MESH;
+          rhs(2*dirichletnodes(i)+1) = rhs(2*dirichletnodes(i)+1) - 0.;
+        }
+        for(int i = 0; i < dirichletnodes1.size(); ++i) {
+          rhs(2*dirichletnodes1(i)+0) = rhs(2*dirichletnodes1(i)+0) - BODYLOAD * 1./3. * MESH * MESH;
+          rhs(2*dirichletnodes1(i)+1) = rhs(2*dirichletnodes1(i)+1) - 0.;
+        }
+        for(int i = 0; i < dirichletnodes2.size(); ++i) {
+          rhs(2*dirichletnodes2(i)+0) = rhs(2*dirichletnodes2(i)+0) - BODYLOAD * 1./3. * MESH * MESH;
+          rhs(2*dirichletnodes2(i)+1) = rhs(2*dirichletnodes2(i)+1) - 0.;
+        }
+        for(int i = 0; i < rhsnodes.size(); ++i) {
+          rhs(2*rhsnodes(i)+0) = rhs(2*rhsnodes(i)+0) - BODYLOAD * 1./3. * MESH * MESH;
+          rhs(2*rhsnodes(i)+1) = rhs(2*rhsnodes(i)+1) - 0.;
+        }
+
+        Corner_node = feMesh->get_Node_xy(1.0, 1.0);
+        rhs(2*Corner_node+0) = rhs(2*Corner_node+0) + BODYLOAD * 1./6. * MESH * MESH;
+        rhs(2*Corner_node+1) = 0.0;
+
+        Corner_node = feMesh->get_Node_xy(1.0, -1.0);
+        rhs(2*Corner_node+0) = rhs(2*Corner_node+0) + BODYLOAD * 1./6. * MESH * MESH;
+        rhs(2*Corner_node+1) = 0.0;
+
+        Corner_node = feMesh->get_Node_xy(-1.0, 1.0);
+        rhs(2*Corner_node+0) = rhs(2*Corner_node+0) + BODYLOAD * 1./6. * MESH * MESH;
+        rhs(2*Corner_node+1) = 0.0;
+
+        Corner_node = feMesh->get_Node_xy(-1.0, -1.0);
+        rhs(2*Corner_node+0) = rhs(2*Corner_node+0) + BODYLOAD * 1./6. * MESH * MESH;
+        rhs(2*Corner_node+1) = 0.0;        */
 }
 
 // Before Robin

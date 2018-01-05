@@ -45,6 +45,18 @@ using namespace LAMMPS_NS;
 #define TLOAD 1
 #endif
 
+#ifndef RATIO
+#define RATIO 0.05
+#endif
+
+#ifndef MU
+#define MU 1.
+#endif
+
+#ifndef LMU
+#define LMU 4.
+#endif
+
 // -------------------------------------------------------------
 // Define functions */
 // -------------------------------------------------------------
@@ -158,7 +170,7 @@ int main(int narg, char **arg)
   errorfile.open ("errorconv.txt");
 
   FE_Engine feEngine(File);
-  feEngine.FEsetup(mu, nu, ndof, ncoord, load);
+  feEngine.FEsetup3(mu, nu, ndof, ncoord, load);
 
   fclose (File);
   cout << "FE was set" << endl;
@@ -279,7 +291,7 @@ int main(int narg, char **arg)
   // -------------------------------------------------------------
   int mytsp = 0;
   int tstp = 0;
-  double CoupleTol = 1e-15;
+  double CoupleTol = 1e-11;
   double diffx     = 100.0;
   double diffx0    = 100.0;
   double diffFE    = 100.0;
@@ -376,9 +388,13 @@ for (int loadi=0; loadi<TLOAD; loadi++)
       for(int i = 0; i < fe_nds_bc2FE.size(); ++i) {
         offset3d = 3 * lp_intrnl_nds_bc2FEnew(i);
         offset2d = ndof * fe_nds_bc2FE(i);
-        dirichletpresc_values(idrch) = (x[offset3d+0] - Coords(0, fe_nds_bc2FE(i)));
+//        dirichletpresc_values(idrch) = (x[offset3d+0] - Coords(0, fe_nds_bc2FE(i)));
+//         dirichletpresc_values(idrch) = RATIO*(Coords(0, fe_nds_bc2FE(i))*Coords(0, fe_nds_bc2FE(i))-1.);        
+        dirichletpresc_values(idrch) = RATIO*(MU*(Coords(0, fe_nds_bc2FE(i))*Coords(0, fe_nds_bc2FE(i)))-LMU*(Coords(1, fe_nds_bc2FE(i))*Coords(1, fe_nds_bc2FE(i))));         
         idrch++;
-        dirichletpresc_values(idrch) = (x[offset3d+1] - Coords(1, fe_nds_bc2FE(i)));
+//        dirichletpresc_values(idrch) = (x[offset3d+1] - Coords(1, fe_nds_bc2FE(i)));
+//        dirichletpresc_values(idrch) = 0.0;
+        dirichletpresc_values(idrch) = RATIO*(LMU*(Coords(0, fe_nds_bc2FE(i))*Coords(0, fe_nds_bc2FE(i)))-MU*(Coords(1, fe_nds_bc2FE(i))*Coords(1, fe_nds_bc2FE(i))));        
         idrch++;
       }
     }  
@@ -641,12 +657,15 @@ for (int loadi=0; loadi<TLOAD; loadi++)
     analerror = 0.0;
     for (int i=0;(2*i) < fesol.size();i++)
     {
-      analerror += (fesol(2*i)-analA*(Coords(0, i)+1.))*(fesol(2*i)-analA*(Coords(0, i)+1.)) + (fesol(2*i+1)-analB*(Coords(1, i)+1.))*(fesol(2*i+1)-analB*(Coords(1, i)+1.));
+//      analerror += (fesol(2*i)-analA*(Coords(0, i)+1.))*(fesol(2*i)-analA*(Coords(0, i)+1.)) + (fesol(2*i+1)-analB*(Coords(1, i)+1.))*(fesol(2*i+1)-analB*(Coords(1, i)+1.));
+//      analerror += (fesol(2*i)-RATIO*(Coords(0, i)*Coords(0, i)-1.))*(fesol(2*i)-RATIO*(Coords(0, i)*Coords(0, i)-1.)) + fesol(2*i+1)*fesol(2*i+1);      
+      analerror += (fesol(2*i)-RATIO*(MU*Coords(0, i)*Coords(0, i)-LMU*Coords(1, i)*Coords(1, i)))*(fesol(2*i)-RATIO*(MU*Coords(0, i)*Coords(0, i)-LMU*Coords(1, i)*Coords(1, i))) + (fesol(2*i+1)-RATIO*(LMU*Coords(0, i)*Coords(0, i)-MU*Coords(1, i)*Coords(1, i)))*(fesol(2*i+1)-RATIO*(LMU*Coords(0, i)*Coords(0, i)-MU*Coords(1, i)*Coords(1, i)));      
     }
     lammperror = 0.0;
     for(int i = 0; i < natoms; ++i)
     {
-	lammperror += (x[3*i]-analA*(xe0[3*i]+1.)-xe0[3*i])*(x[3*i]-analA*(xe0[3*i]+1.)-xe0[3*i]) + (x[3*i+1]-analB*(xe0[3*i+1]+1.)-xe0[3*i+1])*(x[3*i+1]-analB*(xe0[3*i+1]+1.)-xe0[3*i+1]);
+//	lammperror += (x[3*i]-analA*(xe0[3*i]+1.)-xe0[3*i])*(x[3*i]-analA*(xe0[3*i]+1.)-xe0[3*i]) + (x[3*i+1]-analB*(xe0[3*i+1]+1.)-xe0[3*i+1])*(x[3*i+1]-analB*(xe0[3*i+1]+1.)-xe0[3*i+1]);
+        lammperror += (x[3*i]-RATIO*(MU*xe0[3*i]*xe0[3*i]-LMU*xe0[3*i+1]*xe0[3*i+1])-xe0[3*i])*(x[3*i]-RATIO*(MU*xe0[3*i]*xe0[3*i]-LMU*xe0[3*i+1]*xe0[3*i+1])-xe0[3*i])+ (x[3*i+1]-RATIO*(LMU*xe0[3*i]*xe0[3*i]-MU*xe0[3*i+1]*xe0[3*i+1])-xe0[3*i+1])*(x[3*i+1]-RATIO*(LMU*xe0[3*i]*xe0[3*i]-MU*xe0[3*i+1]*xe0[3*i+1])-xe0[3*i+1]);
     }
 
 
