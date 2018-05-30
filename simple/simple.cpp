@@ -38,7 +38,7 @@ using namespace std;
 using namespace LAMMPS_NS;
 
 #ifndef BCVALUE
-#define BCVALUE 0.56
+#define BCVALUE 0.59
 #endif
 
 #ifndef TLOAD
@@ -153,7 +153,6 @@ int main(int narg, char **arg)
 //  double analA = load/0.05/mu*(1.-nu)*(1.+nu);
 //  double analB = -nu*analA/(1.-nu);
 
-
   int flag = atoi(arg[2]); // uses 1 dirichet; 2 for neumann; 3 robin
   int thetaflag = 0; //uses 0 without aitkenl 1 for aitken
 
@@ -169,8 +168,14 @@ int main(int narg, char **arg)
   ofstream errorfile;
   errorfile.open ("errorconv.txt");
 
+
   FE_Engine feEngine(File);
+//linear case:
   feEngine.FEsetup3(mu, nu, ndof, ncoord, load);
+
+
+//quad case:
+//feEngine.FEsetup3(mu, nu, ndof, ncoord, load);
 
   fclose (File);
   cout << "FE was set" << endl;
